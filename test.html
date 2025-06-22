@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Bảng dữ liệu từ Google Sheets</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background: #f8f8f8;
+    }
+    h2 {
+      color: #333;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background-color: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      font-size: 14px;
+    }
+    th {
+      background-color: #0077cc;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background-color: #f1f1f1;
+    }
+    tr:hover {
+      background-color: #e0f3ff;
+    }
+  </style>
+</head>
+<body>
+  <h2>Dữ liệu từ Google Sheets</h2>
+  <table id="dataTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Mã bí mật</th>
+        <th>Xe</th>
+        <th>Tuyến</th>
+        <th>Giá</th>
+        <th>File</th>
+        <th>Ngày tạo</th>
+        <th>Người tạo</th>
+        <th>Thiết bị</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const apiUrl = "https://script.google.com/macros/s/AKfycbzOMA_XF07X_4evanuEOpCCTNlmfsMC8rUToD1gz6Q/exec";
+
+    fetch(apiUrl)
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.querySelector("#dataTable tbody");
+        data.forEach(row => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${row.id || ""}</td>
+            <td>${row.ma_so_bi_mat || ""}</td>
+            <td>${row.xe || ""}</td>
+            <td>${row.tuyen || ""}</td>
+            <td>${row.gia || ""}</td>
+            <td>${row.file || ""}</td>
+            <td>${row.ngay_tao || ""}</td>
+            <td>${row.nguoi_tao || ""}</td>
+            <td>${row.thiet_bi || ""}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      })
+      .catch(err => {
+        document.querySelector("#dataTable tbody").innerHTML = `<tr><td colspan="9">Lỗi tải dữ liệu: ${err}</td></tr>`;
+      });
+  </script>
+</body>
+</html>
