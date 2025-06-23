@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trình Xem Dữ Liệu Google Script</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .status {
+            margin-left: auto;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .content {
+            padding: 30px;
+            min-height: 400px;
+        }
+
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .data-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-table tr:hover {
+            background: #f8f9ff;
+        }
+
+        .json-viewer {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .error-message {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #c53030;
+            margin-top: 20px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+            
+            .data-table {
+                font-size: 14px;
+            }
+            
+            .data-table th,
+            .data-table td {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Trình Xem Dữ Liệu</h1>
+            <p>Lấy và hiển thị dữ liệu từ Google Apps Script</p>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="fetchData()">🔄 Tải Dữ Liệu</button>
+            <button class="btn" onclick="toggleView()">🔄 Chuyển Đổi Hiển Thị</button>
+            <button class="btn" onclick="exportData()">💾 Xuất Dữ Liệu</button>
+            <div class="status" id="status">Sẵn sàng</div>
+        </div>
+        
+        <div class="content" id="content">
+            <div style="text-align: center; padding: 50px; color: #666;">
+                <h3>👆 Nhấn "Tải Dữ Liệu" để bắt đầu</h3>
+                <p>Dữ liệu sẽ được hiển thị ở đây sau khi tải thành công</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLi9j7OhlsDYY2oHN75OcVS1yX8h211cI11aMJtFNRJ3sPmyeEhZ17LzbkZeQ2PRUU3Q-swrSUDA9KCCRCpO2lJTGyqzND5xHeONBR7hN-ROiX5exiKHeqR3nZX2QN_c9yy42yLDW74jT17bN8YA5pu5nTFNqhWgAG2lEfN1R1F7jrfrm8q9C4jp-6tBXqIxaQWXs-G4xtYMKX8wR-D6UzkOiPEQRyY60jqTOVgFTPYDNuoGXy1FtciP_cCkoSg-_fDmd71aTAUh_-OWirJvvpDta7c2BDe8IzHdNmee&lib=Mpnxxnfd48z6b_oOkBKvwpStOB-2ijJbp';
+        let currentData = null;
+        let viewMode = 'table'; // 'table' hoặc 'json'
+
+        function updateStatus(message, type = 'loading') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+
+        async function fetchData() {
+            updateStatus('Đang tải dữ liệu...', 'loading');
+            const contentEl = document.getElementById('content');
+            
+            // Hiển thị loading spinner
+            contentEl.innerHTML = `
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                </div>
+            `;
+
+            // Thử nhiều phương pháp fetch khác nhau
+            const fetchMethods = [
+                // Phương pháp 1: Fetch với CORS
+                () => fetch(API_URL, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                }),
+                
+                // Phương pháp 2: Fetch không có CORS mode
+                () => fetch(API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                }),
+                
+                // Phương pháp 3: Fetch đơn giản
+                () => fetch(API_URL),
+                
+                // Phương pháp 4: JSONP callback (cho Google Apps Script)
+                () => fetchWithJSONP(API_URL)
+            ];
+
+            for (let i = 0; i < fetchMethods.length; i++) {
+                try {
+                    console.log(`Thử phương pháp ${i + 1}...`);
+                    updateStatus(`Đang thử phương pháp ${i + 1}/4...`, 'loading');
+                    
+                    const response = await fetchMethods[i]();
+                    
+                    // Kiểm tra nếu response là từ JSONP
+                    if (response && typeof response === 'object' && !response.json) {
+                        currentData = response;
+                        updateStatus(`Tải thành công (PP${i + 1}) • ${getCurrentDataCount()} mục`, 'success');
+                        displayData(response);
+                        return;
+                    }
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    currentData = data;
+                    
+                    updateStatus(`Tải thành công (PP${i + 1}) • ${getCurrentDataCount()} mục`, 'success');
+                    displayData(data);
+                    return;
+                    
+                } catch (error) {
+                    console.log(`Phương pháp ${i + 1} thất bại:`, error.message);
+                    if (i === fetchMethods.length - 1) {
+                        // Tất cả phương pháp đều thất bại
+                        throw error;
+                    }
+                    // Thử phương pháp tiếp theo
+                    continue;
+                }
+            }
+            
+        }
+
+        // Hàm JSONP để bypass CORS
+        function fetchWithJSONP(url) {
+            return new Promise((resolve, reject) => {
+                // Tạo callback function name duy nhất
+                const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+                
+                // Tạo script element
+                const script = document.createElement('script');
+                
+                // Tạo callback function
+                window[callbackName] = function(data) {
+                    delete window[callbackName];
+                    document.head.removeChild(script);
+                    resolve(data);
+                };
+                
+                // Set timeout để tránh treo
+                const timeout = setTimeout(() => {
+                    delete window[callbackName];
+                    document.head.removeChild(script);
+                    reject(new Error('JSONP timeout'));
+                }, 10000);
+                
+                script.onerror = function() {
+                    clearTimeout(timeout);
+                    delete window[callbackName];
+                    document.head.removeChild(script);
+                    reject(new Error('JSONP script error'));
+                };
+                
+                // Thêm callback parameter vào URL
+                const separator = url.includes('?') ? '&' : '?';
+                script.src = url + separator + 'callback=' + callbackName;
+                
+                document.head.appendChild(script);
+            });
+        }
+
+        // Hàm fallback nếu tất cả đều thất bại
+        async function fetchData() {
+            updateStatus('Đang tải dữ liệu...', 'loading');
+            const contentEl = document.getElementById('content');
+            
+            contentEl.innerHTML = `
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                </div>
+            `;
+
+            try {
+                await tryAllFetchMethods();
+            } catch (error) {
+                console.error('Tất cả phương pháp fetch đều thất bại:', error);
+                updateStatus('Lỗi khi tải dữ liệu', 'error');
+                contentEl.innerHTML = `
+                    <div class="error-message">
+                        <h3>❌ Không thể tải dữ liệu</h3>
+                        <p><strong>Lỗi:</strong> ${error.message}</p>
+                        <p><strong>Các giải pháp khắc phục:</strong></p>
+                        <ol style="margin-top: 10px; margin-left: 20px;">
+                            <li><strong>Mở URL trực tiếp:</strong> <a href="${API_URL}" target="_blank" style="color: #667eea;">Nhấn vào đây</a> để xem dữ liệu trong tab mới</li>
+                            <li><strong>Cài đặt CORS Extension:</strong> Tìm "CORS Unblock" trong Chrome Web Store</li>
+                            <li><strong>Chạy từ server:</strong> Đặt file HTML lên web server thay vì mở file local</li>
+                            <li><strong>Cấu hình Google Apps Script:</strong> Đảm bảo script được deploy với quyền "Anyone" và "Execute as Me"</li>
+                        </ol>
+                        <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 5px;">
+                            <strong>💡 Thử ngay:</strong> Sao chép URL bên dưới và dán vào thanh địa chỉ trình duyệt:<br>
+                            <code style="background: white; padding: 5px; border-radius: 3px; display: block; margin-top: 5px; word-break: break-all;">${API_URL}</code>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        async function tryAllFetchMethods() {
+            const methods = [
+                {
+                    name: 'CORS Fetch',
+                    fn: () => fetch(API_URL, {
+                        method: 'GET',
+                        mode: 'cors',
+                        headers: { 'Accept': 'application/json' }
+                    })
+                },
+                {
+                    name: 'No-CORS Fetch', 
+                    fn: () => fetch(API_URL, {
+                        method: 'GET',
+                        mode: 'no-cors'
+                    })
+                },
+                {
+                    name: 'Simple Fetch',
+                    fn: () => fetch(API_URL)
+                }
+            ];
+
+            for (let i = 0; i < methods.length; i++) {
+                try {
+                    updateStatus(`Thử ${methods[i].name} (${i + 1}/${methods.length})...`, 'loading');
+                    
+                    const response = await methods[i].fn();
+                    
+                    if (response.ok || response.status === 0) {
+                        const text = await response.text();
+                        
+                        // Thử parse JSON
+                        try {
+                            const data = JSON.parse(text);
+                            currentData = data;
+                            updateStatus(`Thành công với ${methods[i].name} • ${getCurrentDataCount()} mục`, 'success');
+                            displayData(data);
+                            return;
+                        } catch (e) {
+                            // Nếu không phải JSON, hiển thị text
+                            if (text.trim()) {
+                                currentData = { raw_data: text };
+                                updateStatus(`Thành công với ${methods[i].name} • Dữ liệu text`, 'success');
+                                displayData({ raw_data: text });
+                                return;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.log(`${methods[i].name} thất bại:`, error.message);
+                }
+            }
+            
+            throw new Error('Tất cả phương pháp fetch đều thất bại');
+        }
+
+        function getCurrentDataCount() {
+            if (!currentData) return 0;
+            if (Array.isArray(currentData)) return currentData.length;
+            if (typeof currentData === 'object') return Object.keys(currentData).length;
+            return 1;
+        }
+
+        function displayData(data) {
+            const contentEl = document.getElementById('content');
+            
+            if (viewMode === 'table') {
+                displayAsTable(data, contentEl);
+            } else {
+                displayAsJson(data, contentEl);
+            }
+        }
+
+        function displayAsTable(data, container) {
+            let html = '';
+            
+            // Thống kê
+            html += `
+                <div class="stats">
+                    <div class="stat-card">
+                        <h3>${getCurrentDataCount()}</h3>
+                        <p>Tổng Số Mục</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${typeof data}</h3>
+                        <p>Kiểu Dữ Liệu</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${new Date().toLocaleTimeString('vi-VN')}</h3>
+                        <p>Thời Gian Tải</p>
+                    </div>
+                </div>
+            `;
+
+            if (Array.isArray(data) && data.length > 0) {
+                // Nếu là mảng object, hiển thị dưới dạng bảng
+                if (typeof data[0] === 'object') {
+                    const headers = Object.keys(data[0]);
+                    html += `
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    ${headers.map(header => `<th>${header}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(row => `
+                                    <tr>
+                                        ${headers.map(header => `<td>${formatCellValue(row[header])}</td>`).join('')}
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    // Nếu là mảng các giá trị đơn giản
+                    html += `
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Chỉ Số</th><th>Giá Trị</th></tr>
+                            </thead>
+                            <tbody>
+                                ${data.map((item, index) => `
+                                    <tr>
+                                        <td>${index}</td>
+                                        <td>${formatCellValue(item)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                }
+            } else if (typeof data === 'object' && data !== null) {
+                // Nếu là object, hiển thị key-value
+                html += `
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Khóa</th><th>Giá Trị</th></tr>
+                        </thead>
+                        <tbody>
+                            ${Object.entries(data).map(([key, value]) => `
+                                <tr>
+                                    <td><strong>${key}</strong></td>
+                                    <td>${formatCellValue(value)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } else {
+                html += `<div style="text-align: center; padding: 50px; color: #666;">
+                    <h3>📄 Dữ liệu đơn giản</h3>
+                    <p style="font-size: 1.2rem; margin-top: 20px;">${formatCellValue(data)}</p>
+                </div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function displayAsJson(data, container) {
+            const html = `
+                <div class="stats">
+                    <div class="stat-card">
+                        <h3>${getCurrentDataCount()}</h3>
+                        <p>Tổng Số Mục</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>JSON</h3>
+                        <p>Định Dạng</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${new Date().toLocaleTimeString('vi-VN')}</h3>
+                        <p>Thời Gian Tải</p>
+                    </div>
+                </div>
+                <div class="json-viewer">${JSON.stringify(data, null, 2)}</div>
+            `;
+            container.innerHTML = html;
+        }
+
+        function formatCellValue(value) {
+            if (value === null) return '<em>null</em>';
+            if (value === undefined) return '<em>undefined</em>';
+            if (typeof value === 'object') return JSON.stringify(value);
+            if (typeof value === 'string' && value.length > 100) {
+                return value.substring(0, 100) + '...';
+            }
+            return String(value);
+        }
+
+        function toggleView() {
+            if (!currentData) {
+                alert('Vui lòng tải dữ liệu trước!');
+                return;
+            }
+            
+            viewMode = viewMode === 'table' ? 'json' : 'table';
+            displayData(currentData);
+            updateStatus(`Chế độ hiển thị: ${viewMode.toUpperCase()}`, 'success');
+        }
+
+        function exportData() {
+            if (!currentData) {
+                alert('Vui lòng tải dữ liệu trước!');
+                return;
+            }
+
+            const dataStr = JSON.stringify(currentData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `data_${new Date().getTime()}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            updateStatus('Đã xuất dữ liệu thành công', 'success');
+        }
+
+        // Tự động fetch dữ liệu khi trang load
+        window.addEventListener('load', () => {
+            console.log('Trang đã tải xong. Sẵn sàng fetch dữ liệu.');
+        });
+    </script>
+</body>
+</html>
